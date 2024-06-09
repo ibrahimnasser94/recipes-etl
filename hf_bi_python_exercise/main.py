@@ -1,3 +1,4 @@
+import traceback
 import pandas as pd
 from fuzzywuzzy import fuzz
 import re
@@ -16,18 +17,17 @@ def download_json_to_dataframe(url):
 def sanitize_dataframe(df):
     df_sanitized = remove_escape_character(df)
     df_sanitized = replace_ampersands(df_sanitized)
+    df_sanitized = replace_semicolons_with_commas(df_sanitized)
     return df_sanitized
 
 def remove_escape_character(df):
-    for column in df.columns:
-        df[column] = df[column].str.replace('\n', ' ')
-    return df
-    
+    return df.map(lambda x: x.replace('\n', ' ') if isinstance(x, str) else x)
+
 def replace_ampersands(df):
-    for column in df.columns:
-        df[column] = df[column].str.replace('&amp;', '&')
-        df[column] = df[column].str.replace('&amp', '&')
-    return df
+    return df.map(lambda x: x.replace('&amp', '&') if isinstance(x, str) else x)
+
+def replace_semicolons_with_commas(df):
+    return df.map(lambda x: x.replace(';', ',') if isinstance(x, str) else x)
 
 def filter_recipes(df, column='ingredients', phrase='Chil'):
     def fuzzy_match(x):
@@ -72,7 +72,6 @@ def determine_difficulty(time):
     else: 
         return "Easy"
 
-
 def set_difficulty(df):
     return df['totalTime'].apply(determine_difficulty)
 
@@ -88,9 +87,8 @@ def calculate_average_times(df):
 
     average_times = df.groupby('difficulty')['totalTime'].mean()
     average_times_df = average_times.reset_index()
-    average_times_df.columns = ['Difficulty', 'AverageTotalTime']
+    average_times_df.columns = ['difficulty', 'averageTotalTime']
     return average_times_df
-
 
 def dump_to_csv(df, filename):
     df.to_csv(filename, sep='|', index=False)
@@ -104,8 +102,9 @@ def clean_difficulty_data(df_difficulty):
 def transform_recipes(df):
     df_cleaned = sanitize_dataframe(df)
     df_filtered = filter_recipes(df_cleaned)
-    calculate_total_time(df_filtered)
-    df_difficulty = set_difficulty(df_filtered)
+    df_total_time = calculate_total_time(df_filtered)
+    df_difficulty = df_total_time.assign(new_column = 'difficulty')
+    df_difficulty['difficulty'] = set_difficulty(df_difficulty);
     return df_difficulty
 
 def generate_average_times_csv(df):
@@ -124,10 +123,13 @@ if __name__ == "__main__":
         generate_difficulty_csv(df_difficulty)
     except KeyError as ke:
         print(f"KeyError: {ke}")
+        traceback.print_exc()
     except ValueError as ve:
         print(f"ValueError: {ve}")
+        traceback.print_exc()
     except Exception as e:
         print(f"Unexpected error: {e}")
+        traceback.print_exc()
 
 
 
