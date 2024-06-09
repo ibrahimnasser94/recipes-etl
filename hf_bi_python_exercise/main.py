@@ -35,6 +35,17 @@ def sanitize_dataframe(df):
     return df_sanitized
 
 def check_empty_dataframe(df):
+    """
+    Checks if the input DataFrame is empty.
+
+    If the DataFrame is empty, it prints a message and exits the program.
+
+    Parameters:
+    df (pandas.DataFrame): The input DataFrame to be checked.
+
+    Returns:
+    None
+    """
     if df.empty:
         print("The input DataFrame is empty. Exiting the program.")
         sys.exit()
@@ -326,6 +337,18 @@ def execute_etl_pipeline(bi_recipes_url):
             # Schedule each function to run in a separate thread
             thread1 = executor.submit(generate_average_times_csv, df_difficulty)
             thread2 = executor.submit(generate_difficulty_csv, df_difficulty)
+
+            try:
+                thread1.result()  # This will raise an exception if the generate_average_times_csv function failed
+            except Exception as e:
+                print(f"Error in generate_average_times_csv: {e}")
+                traceback.print_exc()
+            try:
+                thread2.result()  # This will raise an exception if the generate_difficulty_csv function failed
+            except Exception as e:
+                print(f"Error in generate_difficulty_csv: {e}")
+                traceback.print_exc()
+
     except KeyError as ke:
         print(f"KeyError: {ke}")
         traceback.print_exc()
